@@ -408,7 +408,7 @@ const ProjectsPage = () => {
                         bgUrl={
                           project.images && project.images.length > 0
                               ? project.images[0].url
-                              : "https://via.placeholder.com/350x250?text=No+Image"
+                              : "https://placehold.co/350x250?text=No+Image"
                         }
                     />
                     <ProjectInfo viewMode={viewMode}>

@@ -7,18 +7,18 @@ const UploaderContainer = styled.div`
   margin-bottom: 1.5rem;
 `;
 
-const UploadArea = styled.div<{ isDragging: boolean }>`
-  border: 2px dashed ${({ isDragging }) => (isDragging ? '#333' : '#ddd')};
-  border-radius: 5px;
-  padding: 2rem;
-  text-align: center;
-  background-color: ${({ isDragging }) => (isDragging ? '#f9f9f9' : 'transparent')};
-  transition: all 0.3s ease;
-  cursor: pointer;
-  
-  &:hover {
-    background-color: #f9f9f9;
-  }
+const UploadArea = styled.div<{ $isDragging: boolean }>`
+    border: 2px dashed ${({ $isDragging }) => ($isDragging ? '#333' : '#ddd')};
+    border-radius: 5px;
+    padding: 2rem;
+    text-align: center;
+    background-color: ${({ $isDragging }) => ($isDragging ? '#f9f9f9' : 'transparent')};
+    transition: all 0.3s ease;
+    cursor: pointer;
+
+    &:hover {
+        background-color: #f9f9f9;
+    }
 `;
 
 const UploadIcon = styled.div`
@@ -185,7 +185,7 @@ const ImageUploader: React.FC<ImageUploaderProps> = ({ onUploadSuccess }) => {
     return (
         <UploaderContainer>
             <UploadArea
-                isDragging={isDragging}
+                $isDragging={isDragging}
                 onDragEnter={handleDragEnter}
                 onDragLeave={handleDragLeave}
                 onDragOver={handleDragOver}

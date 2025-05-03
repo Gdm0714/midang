@@ -14,6 +14,7 @@ export class ImageService {
 
   async create(createImageDto: CreateImageDto): Promise<Image> {
     const image = this.imageRepository.create(createImageDto);
+    console.log(image);
     return this.imageRepository.save(image);
   }
 

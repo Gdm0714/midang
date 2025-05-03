@@ -260,6 +260,9 @@ const HomePage = () => {
   useEffect(() => {
     if (featuredProjects) {
       console.log("Featured projects loaded:", featuredProjects);
+      featuredProjects.forEach(project => {
+        console.log(`Project ${project.id} (${project.title}) images:`, project.images);
+      });
     }
     if (allProjects) {
       console.log("All projects loaded:", allProjects);
@@ -319,7 +322,7 @@ const HomePage = () => {
                           src={
                             project.images && project.images.length > 0
                                 ? project.images[0].url
-                                : "https://via.placeholder.com/350x250?text=No+Image"
+                                : "https://placehold.co/350x250?text=No+Image"
                           }
                           alt={project.title}
                       />

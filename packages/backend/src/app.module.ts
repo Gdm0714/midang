@@ -29,7 +29,8 @@ import { join } from 'path';
         password: configService.get('DB_PASSWORD', 'postgres'),
         database: configService.get('DB_DATABASE', 'architecture_firm'),
         entities: [Project, Category, Image],
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        synchronize: true,
+        logging: true,
       }),
     }),
     ServeStaticModule.forRoot({

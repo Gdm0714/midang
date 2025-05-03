@@ -15,9 +15,23 @@ export const fetchImages = async () => {
 
 export const fetchImagesByProject = async (projectId: number) => {
     try {
-        // 백엔드에서는 ?projectId= 쿼리 파라미터를 사용합니다
         const response = await axios.get(`${API_URL}/images?projectId=${projectId}`);
-        return response.data;
+
+        // URL 형식을 확인 및 수정
+        const images = response.data.map((image: {url: string}) => {
+            let imageUrl = image.url;
+
+            // URL이 상대 경로인 경우 전체 경로로 변환
+            if (imageUrl && (imageUrl.startsWith('/uploads') || imageUrl.startsWith('uploads'))) {
+                imageUrl = `http://localhost:3001${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
+                return { ...image, url: imageUrl };
+            }
+
+            return image;
+        });
+
+        console.log('Images with fixed URLs:', images);
+        return images;
     } catch (error) {
         console.error('Error fetching images by project:', error);
         throw error;
@@ -73,11 +87,14 @@ export const setFeaturedImage = async (id: number, isFeatured: boolean) => {
     }
 };
 
-// imageService.ts에 추가
 export const uploadFile = async (file: File): Promise<{ url: string }> => {
     try {
+        console.log('Uploading file:', file.name, 'Size:', file.size, 'Type:', file.type);
+
         const formData = new FormData();
         formData.append('file', file);
+
+        console.log('FormData created, sending to backend...');
 
         // 백엔드의 /uploads/image 엔드포인트에 파일 업로드
         const response = await axios.post(`${API_URL}/uploads/image`, formData, {
@@ -86,9 +103,26 @@ export const uploadFile = async (file: File): Promise<{ url: string }> => {
             }
         });
 
-        return response.data; // { url: string } 형태로 반환됨
+        console.log('Backend response:', response.data);
+
+        // URL 수정: undefined가 포함되거나 상대 경로인 경우 수정
+        let imageUrl = response.data.url;
+
+        if (imageUrl) {
+            if (imageUrl.startsWith('undefined')) {
+                imageUrl = imageUrl.replace('undefined', 'http://localhost:3001');
+            } else if (imageUrl.startsWith('/uploads')) {
+                imageUrl = `http://localhost:3001${imageUrl}`;
+            }
+        }
+
+        console.log('Final image URL:', imageUrl);
+        return { url: imageUrl };
     } catch (error) {
         console.error('Error uploading file:', error);
+        if (axios.isAxiosError(error)) {
+            console.error('Axios error details:', error.response?.data, error.message);
+        }
         throw error;
     }
 };
