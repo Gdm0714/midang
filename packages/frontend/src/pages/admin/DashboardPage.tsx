@@ -6,8 +6,8 @@ import { fetchCategories } from '../../services/categoryService';
 import { fetchImages } from '../../services/imageService';
 
 const DashboardContainer = styled.div`
-  max-width: 1200px;
-  margin: 0 auto;
+    max-width: 1200px;
+    margin: 0 auto;
 `;
 
 const PageTitle = styled.h1`
@@ -80,7 +80,10 @@ const ItemMeta = styled.div`
 `;
 
 const DashboardPage = () => {
-    const { data: projects, isLoading: projectsLoading } = useQuery('adminProjects', fetchProjects);
+    const { data: projects, isLoading: projectsLoading } = useQuery(
+        'adminProjects',
+        () => fetchProjects()
+    );
     const { data: categories, isLoading: categoriesLoading } = useQuery('adminCategories', fetchCategories);
     const { data: images, isLoading: imagesLoading } = useQuery('adminImages', fetchImages);
 

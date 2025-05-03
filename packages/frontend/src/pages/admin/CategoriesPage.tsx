@@ -191,7 +191,11 @@ const CategoriesPage = () => {
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [selectedCategory, setSelectedCategory] = useState(null);
+    const [selectedCategory, setSelectedCategory] = useState<{
+        id: number;
+        name: string;
+        description?: string;
+    } | null>(null);
     const [formData, setFormData] = useState({
         name: '',
         description: ''
@@ -207,7 +211,8 @@ const CategoriesPage = () => {
     });
 
     const updateMutation = useMutation(
-        ({ id, data }) => updateCategory(id, data),
+        ({ id, data }: { id: number; data: { name: string; description: string } }) =>
+            updateCategory(id, data),
         {
             onSuccess: () => {
                 queryClient.invalidateQueries('adminCategories');
@@ -229,7 +234,7 @@ const CategoriesPage = () => {
         setIsModalOpen(true);
     };
 
-    const handleOpenEditModal = (category) => {
+    const handleOpenEditModal = (category: { id: number; name: string; description?: string }) => {
         setSelectedCategory(category);
         setFormData({
             name: category.name,
@@ -238,7 +243,7 @@ const CategoriesPage = () => {
         setIsModalOpen(true);
     };
 
-    const handleOpenDeleteModal = (category) => {
+    const handleOpenDeleteModal = (category: { id: number; name: string }) => {
         setSelectedCategory(category);
         setIsDeleteModalOpen(true);
     };
@@ -248,7 +253,7 @@ const CategoriesPage = () => {
         setIsDeleteModalOpen(false);
     };
 
-    const handleInputChange = (e) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
@@ -256,7 +261,7 @@ const CategoriesPage = () => {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (!formData.name.trim()) {

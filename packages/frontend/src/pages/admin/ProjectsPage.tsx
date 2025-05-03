@@ -11,7 +11,14 @@ import {
     deleteProject
 } from '../../services/api';
 import {fetchCategories} from '../../services/categoryService';
-import {ProjectStatus} from '@architecture-firm/shared/dist/types/project';
+import {ProjectStatus, Project} from '@architecture-firm/shared/dist/types/project.js';
+
+type ProjectImage = {
+    id: number;
+    url: string;
+    description?: string;
+    isFeatured: boolean;
+};
 
 const ProjectsContainer = styled.div`
     max-width: 1200px;
@@ -91,12 +98,12 @@ const ActionButton = styled(motion.button)`
     }
 `;
 
-const StatusBadge = styled.span`
+const StatusBadge = styled.span<{ status: string }>`
     display: inline-block;
     padding: 0.25rem 0.75rem;
     border-radius: 20px;
     font-size: 0.8rem;
-    background-color: ${({status}) => {
+    background-color: ${({ status }) => {
         switch (status) {
             case 'planning':
                 return '#3498db';
@@ -244,18 +251,32 @@ const ProjectsPage = () => {
     const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [selectedProject, setSelectedProject] = useState(null);
-    const [formData, setFormData] = useState({
+    const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+    const [formData, setFormData] = useState<{
+        title: string;
+        description: string;
+        location: string;
+        client: string;
+        year: number | string;
+        status: string; // string으로 변경
+        categoryId: string;
+        images: ProjectImage[];
+    }>({
         title: '',
         description: '',
         location: '',
         client: '',
         year: new Date().getFullYear(),
-        status: ProjectStatus.PLANNING,
-        categoryId: ''
+        status: ProjectStatus.PLANNING, // 값은 그대로 유지
+        categoryId: '',
+        images: []
     });
 
-    const {data: projects, isLoading} = useQuery('adminProjects', fetchProjects);
+
+    const { data: projects, isLoading } = useQuery(
+        'adminProjects',
+        () => fetchProjects()
+    );
     const {data: categories} = useQuery('adminCategories', fetchCategories);
 
     const createMutation = useMutation(createProject, {
@@ -266,7 +287,7 @@ const ProjectsPage = () => {
     });
 
     const updateMutation = useMutation(
-        ({id, data}) => updateProject(id, data),
+        ({ id, data }: { id: number; data: Omit<Project, 'id'> }) => updateProject(id, data),
         {
             onSuccess: () => {
                 queryClient.invalidateQueries('adminProjects');
@@ -291,24 +312,30 @@ const ProjectsPage = () => {
             client: '',
             year: new Date().getFullYear(),
             status: ProjectStatus.PLANNING,
-            categoryId: categories && categories.length > 0 ? categories[0].id : ''
+            categoryId: categories && categories.length > 0 ? String(categories[0].id) : '',
+            images: [] // 빈 이미지 배열 추가
         });
         setIsModalOpen(true);
     };
 
-    const handleOpenEditModal = async (projectId) => {
+    const handleOpenEditModal = async (projectId: number) => {
         try {
             const project = await fetchProjectById(projectId);
-            setSelectedProject(project);
+            console.log('Project data:', project);
+
+            setSelectedProject(project as any); // 타입 문제 회피를 위해 any 사용
+
             setFormData({
-                title: project.title,
-                description: project.description,
-                location: project.location,
-                client: project.client,
-                year: project.year,
-                status: project.status,
-                categoryId: project.category ? project.category.id : ''
+                title: project.title || '',  // undefined 방지를 위한 기본값 추가
+                description: project.description || '',
+                location: project.location || '',
+                client: project.client || '',
+                year: project.year || new Date().getFullYear(),
+                status: project.status || ProjectStatus.PLANNING,
+                categoryId: project.category ? String(project.category.id) : '',
+                images: (project.images || []) as any[] // 타입 문제 회피
             });
+
             setIsModalOpen(true);
         } catch (error) {
             console.error('Error fetching project:', error);
@@ -316,10 +343,10 @@ const ProjectsPage = () => {
         }
     };
 
-    const handleOpenDeleteModal = async (projectId) => {
+    const handleOpenDeleteModal = async (projectId: number) => {
         try {
             const project = await fetchProjectById(projectId);
-            setSelectedProject(project);
+            setSelectedProject(project as Project);
             setIsDeleteModalOpen(true);
         } catch (error) {
             console.error('Error fetching project:', error);
@@ -332,7 +359,7 @@ const ProjectsPage = () => {
         setIsDeleteModalOpen(false);
     };
 
-    const handleInputChange = (e) => {
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
         const {name, value} = e.target;
         setFormData(prev => ({
             ...prev,
@@ -340,7 +367,7 @@ const ProjectsPage = () => {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (!formData.title.trim()) {
@@ -350,19 +377,24 @@ const ProjectsPage = () => {
 
         const submitData = {
             ...formData,
-            year: parseInt(formData.year, 10),
-            categoryId: parseInt(formData.categoryId, 10)
+            year: parseInt(formData.year.toString(), 10),
+            categoryId: parseInt(formData.categoryId, 10),
+            images: formData.images,
+            // 누락된 필드 추가 (존재하지 않는 경우)
+            url: (selectedProject as any)?.url || '',
+            isFeatured: (selectedProject as any)?.isFeatured || false
         };
 
         if (selectedProject) {
             updateMutation.mutate({
                 id: selectedProject.id,
-                data: submitData
+                data: submitData as any // 타입 문제 회피
             });
         } else {
-            createMutation.mutate(submitData);
+            createMutation.mutate(submitData as any); // 타입 문제 회피
         }
     };
+
 
     const handleDelete = () => {
         if (selectedProject) {
@@ -370,13 +402,13 @@ const ProjectsPage = () => {
         }
     };
 
-    const getStatusText = (status) => {
+    const getStatusText = (status: string) => { // 매개변수 타입을 string으로 변경
         switch (status) {
-            case 'planning':
+            case ProjectStatus.PLANNING:
                 return '계획 중';
-            case 'inProgress':
+            case ProjectStatus.IN_PROGRESS:
                 return '진행 중';
-            case 'completed':
+            case ProjectStatus.COMPLETED:
                 return '완료';
             default:
                 return status;
@@ -469,12 +501,13 @@ const ProjectsPage = () => {
                 </ProjectsTable>
             )}
 
+            {/* 나머지 모달 코드... */}
             {isModalOpen && (
                 <ModalOverlay onClick={handleCloseModal}>
                     <ModalContent
-                        initial={{opacity: 0, y: 20}}
-                        animate={{opacity: 1, y: 0}}
-                        exit={{opacity: 0, y: 20}}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
                         onClick={e => e.stopPropagation()}
                     >
                         <ModalTitle>
@@ -532,7 +565,7 @@ const ProjectsPage = () => {
                                             type="number"
                                             id="year"
                                             name="year"
-                                            value={formData.year}
+                                            value={String(formData.year)}
                                             onChange={handleInputChange}
                                             min="1900"
                                             max="2100"
@@ -616,9 +649,9 @@ const ProjectsPage = () => {
             {isDeleteModalOpen && (
                 <ModalOverlay onClick={handleCloseModal}>
                     <ModalContent
-                        initial={{opacity: 0, y: 20}}
-                        animate={{opacity: 1, y: 0}}
-                        exit={{opacity: 0, y: 20}}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
                         onClick={e => e.stopPropagation()}
                     >
                         <ModalTitle>프로젝트 삭제</ModalTitle>
@@ -648,6 +681,7 @@ const ProjectsPage = () => {
                     </ModalContent>
                 </ModalOverlay>
             )}
+
         </ProjectsContainer>
     );
 };

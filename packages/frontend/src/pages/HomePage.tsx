@@ -1,9 +1,9 @@
-import React from "react";
+import React, {useEffect} from "react";
 import { useQuery } from "react-query";
 import { Link } from "react-router-dom";
 import styled from "styled-components";
 import { motion } from "framer-motion";
-import { fetchFeaturedProjects } from "../services/api";
+import { fetchFeaturedProjects, fetchProjects } from "../services/api";
 
 const HomeContainer = styled.div`
   max-width: 100%;
@@ -229,111 +229,159 @@ const AboutButton = styled(Link)`
 `;
 
 const HomePage = () => {
+  // 주요 프로젝트를 가져오는 쿼리
   const {
     data: featuredProjects,
-    isLoading,
-    error,
+    isLoading: featuredLoading,
+    error: featuredError,
   } = useQuery("featuredProjects", fetchFeaturedProjects);
 
-  return (
-    <HomeContainer>
-      <HeroSection>
-        <HeroBackground />
-        <HeroContent>
-          <HeroTitle
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
-            건축을 통한 공간의 재해석
-          </HeroTitle>
-          <HeroSubtitle
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            혁신적인 디자인으로 일상의 공간에 새로운 가치를 더합니다
-          </HeroSubtitle>
-          <Link to="/projects">
-            <HeroButton
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.4 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              프로젝트 둘러보기
-            </HeroButton>
-          </Link>
-        </HeroContent>
-      </HeroSection>
+  // 모든 프로젝트를 가져오는 백업 쿼리
+  const {
+    data: allProjects,
+    isLoading: allProjectsLoading,
+    error: allProjectsError,
+  } = useQuery(
+      ["allProjects", undefined], // Ensure queryKey is always an array
+      ({ queryKey }) => {
+        const categoryId = queryKey[1] as number | undefined; // Safely extract categoryId
+        return fetchProjects(categoryId); // Pass categoryId to fetchProjects
+      },
+      {
+        enabled: featuredError !== null || (featuredProjects && featuredProjects.length === 0),
+      }
+  );
 
-      <FeaturedSection>
-        <SectionTitle>주요 프로젝트</SectionTitle>
-        {isLoading ? (
-          <p>로딩 중...</p>
-        ) : error ? (
-          <p>프로젝트를 불러오는 중 오류가 발생했습니다.</p>
-        ) : (
-          <ProjectsGrid>
-            {featuredProjects?.map((project) => (
-              <ProjectCard
-                key={project.id}
-                whileHover={{ y: -10 }}
+  // 표시할 프로젝트 결정
+  const projectsToDisplay = featuredProjects && featuredProjects.length > 0
+      ? featuredProjects
+      : allProjects?.slice(0, 3); // 주요 프로젝트가 없으면 모든 프로젝트에서 최대 3개 표시
+
+  useEffect(() => {
+    if (featuredProjects) {
+      console.log("Featured projects loaded:", featuredProjects);
+    }
+    if (allProjects) {
+      console.log("All projects loaded:", allProjects);
+    }
+  }, [featuredProjects, allProjects]);
+
+  return (
+      <HomeContainer>
+        <HeroSection>
+          <HeroBackground />
+          <HeroContent>
+            <HeroTitle
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
+                transition={{ duration: 0.6 }}
+            >
+              건축을 통한 공간의 재해석
+            </HeroTitle>
+            <HeroSubtitle
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              혁신적인 디자인으로 일상의 공간에 새로운 가치를 더합니다
+            </HeroSubtitle>
+            <Link to="/projects">
+              <HeroButton
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.4 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
               >
-                <ProjectImage
-                  src={
-                    project.images && project.images.length > 0
-                      ? project.images[0].url
-                      : "https://via.placeholder.com/350x250?text=No+Image"
-                  }
-                  alt={project.title}
-                />
-                <ProjectInfo>
-                  <ProjectTitle>{project.title}</ProjectTitle>
-                  <ProjectLocation>
-                    {project.location} · {project.year}
-                  </ProjectLocation>
-                  <ProjectDescription>{project.description}</ProjectDescription>
-                  <ProjectLink to={`/projects/${project.id}`}>
-                    자세히 보기
-                  </ProjectLink>
-                </ProjectInfo>
-              </ProjectCard>
-            ))}
-          </ProjectsGrid>
-        )}
-      </FeaturedSection>
+                프로젝트 둘러보기
+              </HeroButton>
+            </Link>
+          </HeroContent>
+        </HeroSection>
 
-      <AboutSection>
-        <AboutContent>
-          <AboutImage
-            src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d"
-            alt="About Us"
-          />
-          <AboutInfo>
-            <SectionTitle>우리 소개</SectionTitle>
-            <AboutText>
-              2010년 설립된 건축소사무소는 혁신적인 디자인과 친환경적인 접근
-              방식으로 다양한 건축 프로젝트를 성공적으로 수행해왔습니다. 우리는
-              공간이 인간의 삶에 미치는 영향력을 깊이 이해하고, 각 프로젝트가
-              고객의 필요와 가치를 반영할 수 있도록 최선을 다합니다.
-            </AboutText>
-            <AboutText>
-              건축소사무소의 디자인 철학은 기능성과 미학의 조화, 그리고 지속
-              가능한 건축에 중점을 두고 있습니다. 우리는 매 프로젝트를 통해
-              공간의 새로운 가능성을 모색하고, 사용자의 경험을 향상시키는
-              솔루션을 제공합니다.
-            </AboutText>
-            <AboutButton to="/about">더 알아보기</AboutButton>
-          </AboutInfo>
-        </AboutContent>
-      </AboutSection>
-    </HomeContainer>
+        <FeaturedSection>
+          <SectionTitle>주요 프로젝트</SectionTitle>
+          {featuredLoading || allProjectsLoading ? (
+              <p>로딩 중...</p>
+          ) : featuredError && allProjectsError ? (
+              <p>프로젝트를 불러오는 중 오류가 발생했습니다.</p>
+          ) : projectsToDisplay && projectsToDisplay.length > 0 ? (
+              <ProjectsGrid>
+                {projectsToDisplay.map((project) => (
+                    <ProjectCard
+                        key={project.id}
+                        whileHover={{ y: -10 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5 }}
+                    >
+                      <ProjectImage
+                          src={
+                            project.images && project.images.length > 0
+                                ? project.images[0].url
+                                : "https://via.placeholder.com/350x250?text=No+Image"
+                          }
+                          alt={project.title}
+                      />
+                      <ProjectInfo>
+                        <ProjectTitle>{project.title}</ProjectTitle>
+                        <ProjectLocation>
+                          {project.location} · {project.year}
+                        </ProjectLocation>
+                        <ProjectDescription>{project.description}</ProjectDescription>
+                        <ProjectLink to={`/projects/${project.id}`}>
+                          자세히 보기
+                        </ProjectLink>
+                      </ProjectInfo>
+                    </ProjectCard>
+                ))}
+              </ProjectsGrid>
+          ) : (
+              <div style={{ textAlign: 'center', padding: '3rem 0' }}>
+                <p>등록된 프로젝트가 없습니다. 관리자 페이지에서 프로젝트를 추가해주세요.</p>
+                <Link to="/admin/projects" style={{
+                  display: 'inline-block',
+                  marginTop: '1rem',
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#4CAF50',
+                  color: 'white',
+                  textDecoration: 'none',
+                  borderRadius: '4px',
+                }}>
+                  프로젝트 관리로 이동
+                </Link>
+              </div>
+          )}
+        </FeaturedSection>
+
+        {/* AboutSection은 변경 없음 */}
+        <AboutSection>
+          <AboutContent>
+            <AboutImage
+                src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d"
+                alt="About Us"
+            />
+            <AboutInfo>
+              <SectionTitle>우리 소개</SectionTitle>
+              <AboutText>
+                2010년 설립된 건축소사무소는 혁신적인 디자인과 친환경적인 접근
+                방식으로 다양한 건축 프로젝트를 성공적으로 수행해왔습니다. 우리는
+                공간이 인간의 삶에 미치는 영향력을 깊이 이해하고, 각 프로젝트가
+                고객의 필요와 가치를 반영할 수 있도록 최선을 다합니다.
+              </AboutText>
+              <AboutText>
+                건축소사무소의 디자인 철학은 기능성과 미학의 조화, 그리고 지속
+                가능한 건축에 중점을 두고 있습니다. 우리는 매 프로젝트를 통해
+                공간의 새로운 가능성을 모색하고, 사용자의 경험을 향상시키는
+                솔루션을 제공합니다.
+              </AboutText>
+              <AboutButton to="/about">더 알아보기</AboutButton>
+            </AboutInfo>
+          </AboutContent>
+        </AboutSection>
+      </HomeContainer>
   );
 };
 
 export default HomePage;
+

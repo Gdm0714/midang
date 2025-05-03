@@ -12,6 +12,7 @@ import {
 import { useParams } from 'react-router-dom';
 import { fetchProjectById } from '../../services/api';
 import ImageUploader from '../../components/common/ImageUploader';
+import axios from "axios";
 
 const ImagesContainer = styled.div`
   max-width: 1200px;
@@ -75,11 +76,11 @@ const ImageCard = styled.div`
   position: relative;
 `;
 
-const ImagePreview = styled.div`
-  height: 180px;
-  background-size: cover;
-  background-position: center;
-  background-image: url(${({ src }) => src});
+const ImagePreview = styled.div<{ src: string }>`
+    height: 180px;
+    background-size: cover;
+    background-position: center;
+    background-image: url(${({ src }) => src});
 `;
 
 const ImageInfo = styled.div`
@@ -236,12 +237,19 @@ const SaveButton = styled(motion.button)`
   }
 `;
 
+type Image = {
+    id: number;
+    url: string;
+    description: string;
+    isFeatured: boolean;
+};
+
 const ImagesPage = () => {
     const { id } = useParams();
     const queryClient = useQueryClient();
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    const [selectedImage, setSelectedImage] = useState(null);
+    const [selectedImage, setSelectedImage] = useState<Image | null>(null);
     const [formData, setFormData] = useState({
         description: '',
         isFeatured: false
@@ -249,28 +257,21 @@ const ImagesPage = () => {
 
     const { data: project, isLoading: projectLoading } = useQuery(
         ['project', id],
-        () => fetchProjectById(parseInt(id)),
-        {
-            enabled: !!id
-        }
+        () => fetchProjectById(parseInt(id || '0')),
+        { enabled: !!id }
     );
 
-    const { data: images, isLoading: imagesLoading } = useQuery(
+
+    const { data: images, isLoading: imagesLoading } = useQuery<Image[]>(
         ['projectImages', id],
-        () => fetchImagesByProject(parseInt(id)),
-        {
-            enabled: !!id
-        }
+        () => fetchImagesByProject(parseInt(id || '0')),
+        { enabled: !!id }
     );
 
     const updateImageMutation = useMutation(
-        ({ id, data }) => updateImage(id, data),
-        {
-            onSuccess: () => {
-                queryClient.invalidateQueries(['projectImages', id]);
-                setIsEditModalOpen(false);
-            }
-        }
+        ({ id, data }: { id: number; data: { description: string; isFeatured: boolean } }) =>
+            updateImage(id, data),
+        { onSuccess: () => { queryClient.invalidateQueries(['projectImages', id]); setIsEditModalOpen(false); } }
     );
 
     const deleteImageMutation = useMutation(deleteImage, {
@@ -281,15 +282,12 @@ const ImagesPage = () => {
     });
 
     const setFeaturedMutation = useMutation(
-        ({ id, isFeatured }) => setFeaturedImage(id, isFeatured),
-        {
-            onSuccess: () => {
-                queryClient.invalidateQueries(['projectImages', id]);
-            }
-        }
+        ({ id, isFeatured }: { id: number; isFeatured: boolean }) =>
+            setFeaturedImage(id, isFeatured),
+        { onSuccess: () => { queryClient.invalidateQueries(['projectImages', id]); } }
     );
 
-    const handleOpenEditModal = (image) => {
+    const handleOpenEditModal = (image: Image) => {
         setSelectedImage(image);
         setFormData({
             description: image.description || '',
@@ -298,7 +296,7 @@ const ImagesPage = () => {
         setIsEditModalOpen(true);
     };
 
-    const handleOpenDeleteModal = (image) => {
+    const handleOpenDeleteModal = (image: Image) => {
         setSelectedImage(image);
         setIsDeleteModalOpen(true);
     };
@@ -308,15 +306,18 @@ const ImagesPage = () => {
         setIsDeleteModalOpen(false);
     };
 
-    const handleInputChange = (e) => {
-        const { name, value, type, checked } = e.target;
+    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+        const { name, value, type } = target;
+        const checked = (target as HTMLInputElement).checked;
+
         setFormData(prev => ({
             ...prev,
             [name]: type === 'checkbox' ? checked : value
         }));
     };
 
-    const handleUpdateImage = (e) => {
+    const handleUpdateImage = (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
 
         if (selectedImage) {
@@ -336,29 +337,44 @@ const ImagesPage = () => {
         }
     };
 
-    const handleToggleFeatured = (image) => {
+    const handleToggleFeatured = (image: Image) => {
         setFeaturedMutation.mutate({
             id: image.id,
             isFeatured: !image.isFeatured
         });
     };
 
-    const handleImageUpload = async (url) => {
+    const handleImageUpload = async (url: string) => {
         try {
+            console.log('Image uploaded successfully, URL:', url);
+
+            // 프로젝트 ID가 유효한지 확인
+            if (!id || isNaN(parseInt(id))) {
+                alert('유효하지 않은 프로젝트 ID입니다.');
+                return;
+            }
+
+            const projectId = parseInt(id);
+
+            // 이미지 메타데이터 생성 (URL + 프로젝트 ID)
             const newImageData = {
                 url,
                 description: '',
                 isFeatured: false,
-                projectId: parseInt(id)
+                projectId
             };
 
-            await updateImage(null, newImageData);
+            // API 호출하여 이미지 정보 저장
+            await uploadImage(newImageData);
+
+            // 이미지 목록 갱신
             queryClient.invalidateQueries(['projectImages', id]);
         } catch (error) {
-            console.error('Error saving image:', error);
-            alert('이미지 저장 중 오류가 발생했습니다.');
+            console.error('Error saving image metadata:', error);
+            alert('이미지 정보 저장 중 오류가 발생했습니다.');
         }
     };
+
 
     const isLoading = projectLoading || imagesLoading;
 

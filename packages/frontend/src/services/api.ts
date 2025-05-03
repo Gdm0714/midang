@@ -2,18 +2,16 @@ import axios from "axios";
 import {
   Project,
   ProjectStatus,
-} from "@architecture-firm/shared/src/types/project";
+} from "@architecture-firm/shared/dist/types/project.js";
 
+// src/services/api.ts
 interface ProjectWithImages extends Project {
   images: Array<{
     id: number;
     url: string;
     description: string;
+    isFeatured: boolean; // 이 속성을 추가
   }>;
-  category: {
-    id: number;
-    name: string;
-  };
 }
 
 // API 기본 설정
@@ -45,17 +43,12 @@ export const fetchProjectById = async (id: number): Promise<ProjectWithImages> =
   return response.data;
 };
 
-export const createProject = async (
-  projectData: Omit<Project, "id">,
-): Promise<Project> => {
-  const response = await api.post("/projects", projectData);
+export const createProject = async (projectData: any): Promise<Project> => {
+  const response = await api.post('/projects', projectData);
   return response.data;
 };
 
-export const updateProject = async (
-  id: number,
-  projectData: Partial<Project>,
-): Promise<Project> => {
+export const updateProject = async (id: number, projectData: any): Promise<Project> => {
   const response = await api.put(`/projects/${id}`, projectData);
   return response.data;
 };
